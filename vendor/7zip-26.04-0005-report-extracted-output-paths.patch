@@ -1,8 +1,8 @@
 diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
-index 3b57c1a577865eba61b467c4f2f02bdc85f982ca..9867b9cf4d68c66cc681f9b4bf0a128219494e5d 100644
+index fe84569e0bee7311a481e7a448e0cf9ecd7d91f6..0f5a1555cc95aa8cc1355deaf0eb67846da6ff9d 100644
 --- a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
 +++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
-@@ -2920,6 +2920,15 @@ Z7_COM7F_IMF(CArchiveExtractCallback::SetOperationResult(Int32 opRes))
+@@ -2919,6 +2919,15 @@ Z7_COM7F_IMF(CArchiveExtractCallback::SetOperationResult(Int32 opRes))
  
    SET_OWNER
  
@@ -19,11 +19,11 @@ index 3b57c1a577865eba61b467c4f2f02bdc85f982ca..9867b9cf4d68c66cc681f9b4bf0a1282
    
    COM_TRY_END
 diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.h b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
-index 1e9ca0bcb657d934c4d64447c89152ec491776f2..c1bbe7b3637c607761a64127661f1abbba0e2d98 100644
+index 0b159a496dbe8922e9cbef56511a3cd18b646ed5..302e89c21332cd4aa6224b156295bfacfc9d2809 100644
 --- a/CPP/7zip/UI/Common/ArchiveExtractCallback.h
 +++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
-@@ -495,6 +495,9 @@ public:
- 
+@@ -493,6 +493,9 @@ public:
+   
    FString DirPathPrefix_for_HashFiles;
  
 +  // Optional caller-owned sink for output paths after overwrite/rename handling.

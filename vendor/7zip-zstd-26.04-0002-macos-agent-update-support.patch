@@ -1,5 +1,5 @@
 diff --git a/CPP/7zip/UI/Agent/Agent.cpp b/CPP/7zip/UI/Agent/Agent.cpp
-index b7815c6c7e0d60db7b74e115de049bf6952fec2d..50577ebf5e2dfa481ed899e7cc62340ae515d548 100644
+index 47fc89a15a28746eacee8a5128642fabe17a0c7d..3e7882a69a32080727e111d5684d216b0f855e42 100644
 --- a/CPP/7zip/UI/Agent/Agent.cpp
 +++ b/CPP/7zip/UI/Agent/Agent.cpp
 @@ -1516,8 +1516,11 @@ Z7_COM7F_IMF(CAgentFolder::Extract(const UInt32 *indices,
@@ -16,7 +16,7 @@ index b7815c6c7e0d60db7b74e115de049bf6952fec2d..50577ebf5e2dfa481ed899e7cc62340a
      {
        NFile::NName::NormalizeDirPathPrefix(pathU);
        NFile::NDir::CreateComplexDir(pathU);
-@@ -1644,8 +1647,13 @@ Z7_COM7F_IMF(CAgent::Open(
+@@ -1645,8 +1648,13 @@ Z7_COM7F_IMF(CAgent::Open(
        return GetLastError_noZero_HRESULT();
      if (fi.IsDir())
        return E_FAIL;
@@ -30,7 +30,7 @@ index b7815c6c7e0d60db7b74e115de049bf6952fec2d..50577ebf5e2dfa481ed899e7cc62340a
      FString dirPrefix, fileName;
      if (NFile::NDir::GetFullPathAndSplit(us2fs(_archiveFilePath), dirPrefix, fileName))
      {
-@@ -1691,7 +1699,7 @@ Z7_COM7F_IMF(CAgent::Open(
+@@ -1692,7 +1700,7 @@ Z7_COM7F_IMF(CAgent::Open(
      if (!inStream)
      {
        arc.MTime.Set_From_FiTime(fi.MTime);
@@ -61,10 +61,10 @@ index e19ccd8e8e4173bb69599c9435f2d8a38a41236a..36a489b8a489edab49a9ea9c3d954d24
  
    bool IsThere_ReadOnlyArc() const
 diff --git a/CPP/7zip/UI/Agent/AgentOut.cpp b/CPP/7zip/UI/Agent/AgentOut.cpp
-index 3b2a8b7ebcf723d22253c6fcd661ddcdb9648434..1bca09f38aabeda00aa30b458ddebfc5c50f64ca 100644
+index 1caf1fc4a64351a6f0874ed26a3e3d79d8177391..79257dc63c12133bada1e254843efb383ac85e51 100644
 --- a/CPP/7zip/UI/Agent/AgentOut.cpp
 +++ b/CPP/7zip/UI/Agent/AgentOut.cpp
-@@ -282,19 +282,28 @@ Z7_COM7F_IMF(CAgent::DoOperation(
+@@ -283,19 +283,28 @@ Z7_COM7F_IMF(CAgent::DoOperation(
  
    {
      FString folderPrefix = _folderPrefix;
@@ -94,7 +94,7 @@ index 3b2a8b7ebcf723d22253c6fcd661ddcdb9648434..1bca09f38aabeda00aa30b458ddebfc5
        }
      }
    }
-@@ -565,7 +574,7 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
+@@ -566,7 +575,7 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
  
    CDirItem di;
  
@@ -103,7 +103,7 @@ index 3b2a8b7ebcf723d22253c6fcd661ddcdb9648434..1bca09f38aabeda00aa30b458ddebfc5
    di.Size = 0;
    if (_proxy2)
      di.Name = _proxy2->GetDirPath_as_Prefix(_agentFolder->_proxyDirIndex /* , isAltStreamFolder */);
-@@ -573,9 +582,8 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
+@@ -574,9 +583,8 @@ HRESULT CAgent::CreateFolder(ISequentialOutStream *outArchiveStream,
      di.Name = _proxy->GetDirPath_as_Prefix(_agentFolder->_proxyDirIndex);
    di.Name += folderName;
  
@@ -116,7 +116,7 @@ index 3b2a8b7ebcf723d22253c6fcd661ddcdb9648434..1bca09f38aabeda00aa30b458ddebfc5
    dirItems.Items.Add(di);
  
 diff --git a/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp b/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
-index 44e9d91404b887c8c99ad3abf36f8a443ac23394..f0a87e2085f7cf5a54da74c44894b53703b641c5 100644
+index ef308a521fafc6064dcb546376a06f73c0d85c7a..d42f574801e117362501292035941ade92505a4c 100644
 --- a/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
 +++ b/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp
 @@ -44,7 +44,7 @@ static bool Delete_EmptyFolder_And_EmptySubFolders(const FString &path)

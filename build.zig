@@ -30,6 +30,22 @@ const Variant = enum {
 
 const SfxArch = enum { x86, x86_64, all };
 
+// Keep the ZS library and SFX crypto codecs aligned with upstream.
+const zs_crypto_srcs: []const []const u8 = &.{
+    "CPP/7zip/Crypto/7zKeyDerivation.cpp",
+    "CPP/7zip/Crypto/Aegis256.cpp",
+    "CPP/7zip/Crypto/Ascon.cpp",
+    "CPP/7zip/Crypto/Cascade.cpp",
+    "CPP/7zip/Crypto/CascadeRegister.cpp",
+    "CPP/7zip/Crypto/HkdfBlake2sp.cpp",
+    "CPP/7zip/Crypto/HmacSha512.cpp",
+    "CPP/7zip/Crypto/Pbkdf2HmacSha512.cpp",
+    "CPP/7zip/Crypto/XChaCha20.cpp",
+    "CPP/7zip/Crypto/XChaCha20Register.cpp",
+    "CPP/7zip/Crypto/XChaCha20Poly1305.cpp",
+    "CPP/7zip/Crypto/XChaCha20Poly1305Register.cpp",
+};
+
 pub fn build(b: *std.Build) void {
     const variant = b.option(Variant, "variant", "Variant to build for lib and sfx steps; use all to fan out both variants") orelse .mainline;
     var target_query = b.standardTargetOptionsQueryOnly(.{});
@@ -75,6 +91,29 @@ fn concatFlags(b: *std.Build, base: []const []const u8, extra: []const []const u
     flags.appendSlice(b.allocator, base) catch @panic("OOM");
     flags.appendSlice(b.allocator, extra) catch @panic("OOM");
     return flags.items;
+}
+
+fn addZsCryptoSources(
+    b: *std.Build,
+    root_module: *std.Build.Module,
+    sevenz_root: []const u8,
+    arch: std.Target.Cpu.Arch,
+    cpp_flags: []const []const u8,
+) void {
+    for (zs_crypto_srcs) |file| {
+        // Ascon runtime-gates AVX512, but Clang 21 also requires its separate
+        // evex512 feature for the target-attributed AVX512 intrinsics.
+        const source_flags = if ((arch == .x86_64 or arch == .x86) and
+            std.mem.eql(u8, file, "CPP/7zip/Crypto/Ascon.cpp"))
+            concatFlags(b, cpp_flags, &.{ "-Xclang", "-target-feature", "-Xclang", "+evex512" })
+        else
+            cpp_flags;
+        root_module.addCSourceFile(.{
+            .file = b.path(std.fmt.allocPrint(b.allocator, "{s}/{s}", .{ sevenz_root, file }) catch @panic("OOM")),
+            .flags = source_flags,
+            .language = .cpp,
+        });
+    }
 }
 
 fn prepareVendor(b: *std.Build, variant: Variant) *std.Build.Step {
@@ -572,6 +611,7 @@ fn buildLib(
             .language = .cpp,
         });
     } else {
+        addZsCryptoSources(b, root_module, sevenz_root, target.result.cpu.arch, cpp_flags_zs);
         root_module.addCSourceFiles(.{
             .root = b.path(sevenz_root),
             .files = &.{
@@ -840,15 +880,23 @@ fn buildSfx(
 
     // ZS SFX extras
     if (variant == .zs) {
+        addZsCryptoSources(b, root_module, sevenz_root, sfx_target.result.cpu.arch, cpp_flags);
         root_module.addCSourceFiles(.{
             .root = b.path(sevenz_root),
             .files = &.{
                 "CPP/Common/MyWindows.cpp",
+                "CPP/Common/Sha512Prepare.cpp",
                 "CPP/7zip/Compress/ZstdDecoder.cpp",
                 "CPP/7zip/Compress/ZstdRegister.cpp",
             },
             .flags = cpp_flags,
             .language = .cpp,
+        });
+        root_module.addCSourceFiles(.{
+            .root = b.path(sevenz_root),
+            .files = &.{ "C/Blake2s.c", "C/Sha512.c", "C/Sha512Opt.c" },
+            .flags = c_flags,
+            .language = .c,
         });
 
         const zstd_inc = std.fmt.allocPrint(b.allocator, "-I{s}/C/zstd", .{sevenz_root}) catch @panic("OOM");

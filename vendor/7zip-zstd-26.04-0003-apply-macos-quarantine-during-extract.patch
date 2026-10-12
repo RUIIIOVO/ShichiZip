@@ -1,5 +1,5 @@
 diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
-index a86dd20a29f5568860160232a2ad3fcdb33f0a84..cdfe5aad253fe28cfb75bb527a33a919de736cf9 100644
+index 071e4df1f960d2452bf2dbc9dde0b00a657c825c..c855da1baa871a761e0526b8976d6df25c7773f1 100644
 --- a/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
 +++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp
 @@ -28,6 +28,10 @@
@@ -58,7 +58,7 @@ index a86dd20a29f5568860160232a2ad3fcdb33f0a84..cdfe5aad253fe28cfb75bb527a33a919
          if (isFinalDir)
            _dirAttrib_wasSet = true;
          // printf("\n mkdir OK\n");
-@@ -2089,6 +2115,12 @@ HRESULT CArchiveExtractCallback::CloseFile()
+@@ -2092,6 +2118,12 @@ HRESULT CArchiveExtractCallback::CloseFile()
        }
      }
    }
@@ -72,7 +72,7 @@ index a86dd20a29f5568860160232a2ad3fcdb33f0a84..cdfe5aad253fe28cfb75bb527a33a919
  
    CFiTimesCAM t;
 diff --git a/CPP/7zip/UI/Common/ArchiveExtractCallback.h b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
-index e1822c71aeeedabb320a0b2469280a2bddbd9b30..8b1645b5263ca53873ae9cbb77bad26045c5cace 100644
+index a606f1d4ce59d4e5217b23109a595bd69cd7c59d..7f867a0d03b3b461d64f5cf2873f5666b03ce02a 100644
 --- a/CPP/7zip/UI/Common/ArchiveExtractCallback.h
 +++ b/CPP/7zip/UI/Common/ArchiveExtractCallback.h
 @@ -478,7 +478,7 @@ public:
@@ -84,7 +84,7 @@ index e1822c71aeeedabb320a0b2469280a2bddbd9b30..8b1645b5263ca53873ae9cbb77bad260
    NExtract::NZoneIdMode::EEnum ZoneMode;
    CByteBuffer ZoneBuf;
  #endif
-@@ -504,7 +504,7 @@ public:
+@@ -506,7 +506,7 @@ public:
      _multiArchives = multiArchives;
      _pathMode = pathMode;
      _overwriteMode = overwriteMode;
