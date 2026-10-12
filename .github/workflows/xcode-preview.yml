@@ -19,10 +19,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Xcode 27 Beta
+          - name: Xcode 27.2 Beta 2
             runner: xcode-27
-            developer_dir: /Applications/Xcode.app/Contents/Developer
-            cache_key: xcode-27
+            developer_dir: /Applications/Xcode_27.2_beta_2.app/Contents/Developer
+            cache_key: xcode-27.2-beta-2
     env:
       DEVELOPER_DIR: ${{ matrix.developer_dir }}
       MACOSX_DEPLOYMENT_TARGET: "13.0"
