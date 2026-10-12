@@ -1,4 +1,4 @@
-name: Xcode Preview Builds
+name: Xcode Preview Build and Test
 
 on:
   push:
@@ -12,8 +12,9 @@ permissions:
 
 jobs:
   build:
-    name: Build (${{ matrix.name }})
+    name: Build and Test (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
+    environment: development
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -28,6 +29,7 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
       XCODE_PROJECT: ShichiZip.xcodeproj
       XCODE_CONFIGURATION: Debug
+      XCODE_DERIVED_DATA_PATH: build/DerivedData/ShichiZipZS-${{ matrix.cache_key }}
 
     steps:
       - name: Check out repository with submodules
@@ -75,15 +77,162 @@ jobs:
             --summary all \
             --verbose
 
-      - name: Build app bundle
+      - name: Configure signing mode
+        id: signing
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_P12_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -n "$CERTIFICATE_P12_BASE64" && -n "$CERTIFICATE_PASSWORD" && -n "$SIGNING_IDENTITY" ]]; then
+            echo "has_certificate=true" >> "$GITHUB_OUTPUT"
+            echo "code_sign_identity=$SIGNING_IDENTITY" >> "$GITHUB_OUTPUT"
+            echo "development_team=${APPLE_TEAM_ID:-}" >> "$GITHUB_OUTPUT"
+            echo "Using imported signing certificate."
+          else
+            echo "has_certificate=false" >> "$GITHUB_OUTPUT"
+            echo "code_sign_identity=-" >> "$GITHUB_OUTPUT"
+            echo "development_team=" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets are unavailable; using ad-hoc signing for validation."
+          fi
+
+      - name: Install signing certificate
+        if: steps.signing.outputs.has_certificate == 'true'
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_P12_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          echo "$CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security import "$CERT_PATH" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          rm -f "$CERT_PATH"
+
+      - name: Build and sign app bundle
         run: |
           xcodebuild \
             -project "$XCODE_PROJECT" \
             -scheme ShichiZipZS \
             -configuration "$XCODE_CONFIGURATION" \
-            -derivedDataPath "build/DerivedData/ShichiZipZS-${{ matrix.cache_key }}" \
+            -derivedDataPath "$XCODE_DERIVED_DATA_PATH" \
             -arch arm64 \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY=- \
-            DEVELOPMENT_TEAM= \
+            CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+            DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
             build
+
+      - name: Verify app bundle signature
+        run: |
+          app_path="${XCODE_DERIVED_DATA_PATH}/Build/Products/${XCODE_CONFIGURATION}/ShichiZip ZS.app"
+
+          test -d "$app_path"
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+
+      - name: Run unit tests
+        run: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme ShichiZipZS \
+            -configuration "$XCODE_CONFIGURATION" \
+            -derivedDataPath "$XCODE_DERIVED_DATA_PATH" \
+            -arch arm64 \
+            "-only-testing:ShichiZipZSTests" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+            DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
+            test
+
+      - name: Run UI tests
+        run: |
+          # Persist info/debug os_log entries so they survive until log show
+          sudo log config --subsystem ee.dawn.ShichiZipZS --mode level:debug || true
+
+          run_ui_tests() {
+            xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -scheme ShichiZipZS \
+              -configuration "$XCODE_CONFIGURATION" \
+              -derivedDataPath "$XCODE_DERIVED_DATA_PATH" \
+              -arch arm64 \
+              "$@" \
+              CODE_SIGN_STYLE=Manual \
+              CODE_SIGN_IDENTITY="${{ steps.signing.outputs.code_sign_identity }}" \
+              DEVELOPMENT_TEAM="${{ steps.signing.outputs.development_team }}" \
+              test
+          }
+
+          run_ui_tests \
+            "-only-testing:ShichiZipZSUITests" \
+            "-skip-testing:ShichiZipZSUITests/SettingsWindowRovingFocusUITests"
+
+          (
+            original_keyboard_mode="$(defaults read -g AppleKeyboardUIMode 2>/dev/null || true)"
+            restore_keyboard_mode() {
+              if [[ -n "$original_keyboard_mode" ]]; then
+                defaults write -g AppleKeyboardUIMode -int "$original_keyboard_mode"
+              else
+                defaults delete -g AppleKeyboardUIMode >/dev/null 2>&1 || true
+              fi
+            }
+            trap restore_keyboard_mode EXIT
+
+            defaults write -g AppleKeyboardUIMode -int 3
+            run_ui_tests "-only-testing:ShichiZipZSUITests/SettingsWindowRovingFocusUITests"
+          )
+
+      - name: Collect all test diagnostics
+        if: ${{ always() }}
+        run: |
+          diagnostics_dir="build/test-diagnostics/ShichiZipZS-arm64-${{ matrix.cache_key }}"
+          test_logs_dir="$XCODE_DERIVED_DATA_PATH/Logs/Test"
+          diagnostic_reports_dir="$diagnostics_dir/DiagnosticReports"
+
+          mkdir -p "$diagnostics_dir" "$diagnostic_reports_dir"
+
+          if [[ -d "$test_logs_dir" ]]; then
+            ditto "$test_logs_dir" "$diagnostics_dir/TestLogs"
+          fi
+
+          for source_dir in "$HOME/Library/Logs/DiagnosticReports" "/Library/Logs/DiagnosticReports"; do
+            [[ -d "$source_dir" ]] || continue
+            find "$source_dir" -type f \( \
+              -name "*.crash" -o \
+              -name "*.hang" -o \
+              -name "*.ips" -o \
+              -name "*.spin" -o \
+              -name "*spindump*" \
+            \) -print0 | while IFS= read -r -d '' report; do
+              cp -p "$report" "$diagnostic_reports_dir/$(basename "$report")"
+            done
+          done
+
+          log show --predicate 'subsystem BEGINSWITH "ee.dawn.ShichiZip"' \
+            --info --debug --last 30m --style compact \
+            > "$diagnostics_dir/app-unified-log.txt" 2>&1 || true
+
+          ls -laR "$HOME/Library/Saved Application State"/ee.dawn.ShichiZip*.savedState/ \
+            > "$diagnostics_dir/saved-application-state.txt" 2>&1 || true
+
+      - name: Upload all test diagnostics
+        uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: test-diagnostics-ShichiZipZS-arm64-${{ matrix.cache_key }}-${{ github.run_attempt }}
+          path: build/test-diagnostics/ShichiZipZS-arm64-${{ matrix.cache_key }}
+          if-no-files-found: warn

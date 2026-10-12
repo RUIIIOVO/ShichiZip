@@ -45,7 +45,9 @@ final class SharedUserDefaultsTests: XCTestCase {
         XCTAssertEqual(destination.defaults.stringArray(forKey: "FileManager.CompressArchivePathHistory"),
                        ["/tmp/archive.zip"])
         XCTAssertEqual(destination.defaults.string(forKey: "UnrelatedPreference"), "domain-owned")
-        XCTAssertNil(source.defaults.persistentDomain(forName: source.suiteName))
+        // Foundation may retain an empty domain after removing all its values.
+        XCTAssertTrue(source.defaults.persistentDomain(forName: source.suiteName)?.isEmpty ?? true,
+                      "Migration must remove every value from the source domain.")
     }
 
     func testSettingsMigrationPreservesBothBooleanValues() throws {
