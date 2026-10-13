@@ -3722,6 +3722,14 @@ static void SZAddMacResourceFileExcludes(NWildcard::CCensor& censor) {
         NWildcard::kMark_FileOrDir);
 }
 
+// Lock/owner files that office suites drop next to an open document:
+// Microsoft Office ("~$Report.docx"), WPS Office (".~Report.docx") and
+// LibreOffice (".~lock.Report.docx#").
+static void SZAddOfficeLockFileExcludes(NWildcard::CCensor& censor) {
+    SZAddCensorExclude(censor, L"~$*", true, true, NWildcard::kMark_StrictFile);
+    SZAddCensorExclude(censor, L".~*", true, true, NWildcard::kMark_StrictFile);
+}
+
 static bool SZHasMethodOverride(bool is7z, const UStringVector& strings) {
     FOR_VECTOR(i, strings) {
         const UString& option = strings[i];
@@ -4022,6 +4030,9 @@ static bool SZParseVolumeSizes(const UString& text,
     SZAddCompressionSourcesToCensor(censor, src, s.pathMode);
     if (s.excludeMacResourceFiles) {
         SZAddMacResourceFileExcludes(censor);
+    }
+    if (s.excludeOfficeLockFiles) {
+        SZAddOfficeLockFileExcludes(censor);
     }
 
     SZOperationSession* resolvedSession = session ?: SZMakeDefaultOperationSession();

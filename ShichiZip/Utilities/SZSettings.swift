@@ -18,6 +18,7 @@ enum SZSettingsKey: String {
     case quitAfterLastWindowClosed = "QuitAfterLastWindowClosed"
     case rememberRecentArchives = "RememberRecentArchives"
     case excludeMacResourceFilesByDefault = "ExcludeMacResourceFilesByDefault"
+    case excludeOfficeLockFilesByDefault = "ExcludeOfficeLockFilesByDefault"
     case moveArchiveToTrashAfterExtraction = "MoveArchiveToTrashAfterExtraction"
     case inheritDownloadedFileQuarantine = "InheritDownloadedFileQuarantine"
     case revealAfterExtractInFileManager = "RevealAfterExtractInFileManager"

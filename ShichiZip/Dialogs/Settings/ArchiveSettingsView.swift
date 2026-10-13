@@ -22,6 +22,12 @@ struct ArchiveSettingsView: View {
                 isOn: store.boolBinding(.excludeMacResourceFilesByDefault),
             )
             .accessibilityIdentifier("settings.excludeMacResourceFiles")
+            Toggle(
+                SZL10n.string("app.settings.excludeOfficeLockFiles"),
+                isOn: store.boolBinding(.excludeOfficeLockFilesByDefault),
+            )
+            .help(SZL10n.string("app.compress.excludeOfficeLockFilesHelp"))
+            .accessibilityIdentifier("settings.excludeOfficeLockFiles")
         }
     }
 

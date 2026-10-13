@@ -40,6 +40,8 @@
 "app.benchmark.usableLimit" = "可用上限：%@ MB";
 
 "app.compress.excludeMacResources" = "排除 macOS 资源文件";
+"app.compress.excludeOfficeLockFiles" = "排除文档临时文件";
+"app.compress.excludeOfficeLockFilesHelp" = "Word、WPS 等打开文档时生成的 ~$*、.~* 文件";
 "app.compress.order" = "阶数：";
 
 "app.deleteTempFiles.deleteContents" = "删除「%@」及其全部内容？";
@@ -191,6 +193,7 @@
 "app.settings.defaultOpenersNote" = "已经由本应用作为默认打开方式的类型会显示为「当前默认应用」。如果之后要切换回其他应用，请使用访达的「打开方式」设置或其他应用自己的集成设置。";
 "app.settings.display" = "显示";
 "app.settings.excludeMacResourceForks" = "默认排除 macOS 资源文件";
+"app.settings.excludeOfficeLockFiles" = "默认排除文档临时文件";
 "app.settings.extensions" = "扩展";
 "app.settings.extraction" = "解压";
 "app.settings.fileType" = "文件类型";

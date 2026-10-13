@@ -495,6 +495,7 @@ final class CompressDialogController: NSObject, NSTextFieldDelegate, NSComboBoxD
                                    encryptNames: DialogPreferences.encryptNames(),
                                    createSFX: false,
                                    excludeMacResourceFiles: SZSettings.bool(.excludeMacResourceFilesByDefault),
+                                   excludeOfficeLockFiles: SZSettings.bool(.excludeOfficeLockFilesByDefault),
                                    memoryUsageSpec: DialogPreferences.memoryUsage(),
                                    openSharedFiles: DialogPreferences.openSharedFiles(),
                                    deleteAfterCompression: DialogPreferences.deleteAfterCompression(),

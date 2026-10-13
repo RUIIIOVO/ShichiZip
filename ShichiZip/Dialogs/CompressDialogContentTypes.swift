@@ -134,6 +134,7 @@ extension CompressDialogController {
         let encryptNamesCheckbox: NSButton
         let createSFXCheckbox: NSButton
         let excludeMacResourceFilesCheckbox: NSButton
+        let excludeOfficeLockFilesCheckbox: NSButton
         let openSharedCheckbox: NSButton
         let deleteAfterCheckbox: NSButton
         let dictionaryLabel: NSTextField
