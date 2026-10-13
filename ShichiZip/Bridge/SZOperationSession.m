@@ -389,6 +389,27 @@ static const NSUInteger SZOperationIssueDetailLimit = 256;
     return choice;
 }
 
+- (SZArchiveUpdateEncryption*)requestUpdateEncryptionForArchive:(NSString*)archivePath
+                                              defaultEncryption:(SZEncryptionMethod)defaultEncryption {
+    SZOperationUpdateEncryptionRequestHandler handler = self.updateEncryptionRequestHandler;
+    if (!handler || [self shouldCancel]) {
+        return nil;
+    }
+
+    [self prepareForUserInteraction];
+    __block SZArchiveUpdateEncryption* selection = nil;
+    @try {
+        SZDispatchSyncOnMain(^{
+            if (![self shouldCancel]) {
+                selection = handler(archivePath, defaultEncryption);
+            }
+        });
+    } @finally {
+        [self finishUserInteraction];
+    }
+    return [self shouldCancel] ? nil : selection;
+}
+
 - (SZOperationSnapshot*)newSnapshotWhileLocked {
     return [[SZOperationSnapshot alloc]
                     initWithPhase:_phase

@@ -329,6 +329,10 @@ extension CompressDialogController {
         return formats
     }
 
+    static func encryptionOptions(for format: SZArchiveFormat) -> [Option<SZEncryptionMethod>] {
+        formatCatalog.first { $0.format == format }?.encryptionOptions ?? []
+    }
+
     static func makeSupportedFormatInfoByName() -> [String: SZFormatInfo] {
         SZArchive.supportedFormats().reduce(into: [:]) { partialResult, info in
             partialResult[info.name.lowercased()] = info

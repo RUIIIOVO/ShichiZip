@@ -122,6 +122,23 @@ typedef NS_ENUM(NSInteger, SZEncryptionMethod) {
     SZEncryptionMethodZipCrypto
 };
 
+/// One explicit policy for all new or replaced data in a ZIP update.
+/// Existing entries that are not changed retain their stored payloads.
+NS_SWIFT_SENDABLE
+@interface SZArchiveUpdateEncryption : NSObject
+
+- (instancetype)initWithEncryption:(SZEncryptionMethod)encryption
+                          password:(nullable NSString*)password NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
+
+@property (nonatomic, readonly) SZEncryptionMethod encryption;
+/// Always nil when encryption is None.
+@property (nonatomic, copy, readonly, nullable) NSString* password;
+
+- (BOOL)validateWithError:(NSError**)error NS_SWIFT_NAME(validate());
+
+@end
+
 /// Overwrite mode for extraction
 typedef NS_ENUM(NSInteger, SZOverwriteMode) {
     SZOverwriteModeAsk = 0,

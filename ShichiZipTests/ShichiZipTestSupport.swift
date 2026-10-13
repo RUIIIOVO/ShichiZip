@@ -14,6 +14,13 @@ enum ZipFixtureHostOS: UInt8 {
     case unix = 3
 }
 
+struct ZipFixtureRecord {
+    let path: String
+    let localNameRange: Range<Int>
+    let centralNameRange: Range<Int>
+    let packedDataRange: Range<Int>
+}
+
 extension XCTestCase {
     func skipIfAffectedByIsolatedDeinitTaskLocalRuntimeBug() throws {
         // https://github.com/swiftlang/swift/issues/85663
@@ -246,6 +253,52 @@ extension XCTestCase {
         }
         data[centralOffset + 5] = hostOS.rawValue
         try data.write(to: archiveURL, options: .atomic)
+    }
+
+    /// Reads ordinary ZIP fixture records so tests can compare encrypted bytes
+    /// or edit individual record fields without searching inside payloads.
+    func zipFixtureRecords(in data: Data) throws -> [ZipFixtureRecord] {
+        func integer(at offset: Int, width: Int) throws -> Int {
+            guard offset >= 0, offset + width <= data.count else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return (0 ..< width).reduce(0) { $0 | Int(data[offset + $1]) << (8 * $1) }
+        }
+
+        let end = try XCTUnwrap(data.range(of: Data([0x50, 0x4B, 0x05, 0x06]), options: .backwards)?.lowerBound)
+        let count = try integer(at: end + 10, width: 2)
+        var centralOffset = try integer(at: end + 16, width: 4)
+        var result: [ZipFixtureRecord] = []
+        for _ in 0 ..< count {
+            guard try integer(at: centralOffset, width: 4) == 0x0201_4B50 else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let nameLength = try integer(at: centralOffset + 28, width: 2)
+            let extraLength = try integer(at: centralOffset + 30, width: 2)
+            let commentLength = try integer(at: centralOffset + 32, width: 2)
+            let packedSize = try integer(at: centralOffset + 20, width: 4)
+            let localOffset = try integer(at: centralOffset + 42, width: 4)
+            guard try integer(at: localOffset, width: 4) == 0x0403_4B50 else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let localNameLength = try integer(at: localOffset + 26, width: 2)
+            let localExtraLength = try integer(at: localOffset + 28, width: 2)
+            let centralName = (centralOffset + 46) ..< (centralOffset + 46 + nameLength)
+            let localName = (localOffset + 30) ..< (localOffset + 30 + localNameLength)
+            let payloadOffset = localName.upperBound + localExtraLength
+            let payload = payloadOffset ..< (payloadOffset + packedSize)
+            guard centralName.upperBound <= data.count, localName.upperBound <= data.count,
+                  payload.upperBound <= data.count,
+                  data[centralName] == data[localName]
+            else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let path = try XCTUnwrap(String(data: data[centralName], encoding: .utf8))
+            result.append(ZipFixtureRecord(path: path, localNameRange: localName,
+                                           centralNameRange: centralName, packedDataRange: payload))
+            centralOffset = centralName.upperBound + extraLength + commentLength
+        }
+        return result
     }
 
     /// Creates a TAR fixture while preserving entry order and allowing the

@@ -18,6 +18,7 @@
 "app.archive.error.invalidItemSelection" = "壓縮檔項目選取無效。";
 "app.archive.error.invalidOpenType" = "壓縮檔開啟類型無效：%@";
 "app.archive.error.invalidSourcePath" = "來源路徑無效。";
+"app.archive.error.invalidUpdateEncryptionMethod" = "不支援此加密方式。";
 "app.archive.error.itemAlreadyExists" = "壓縮檔中已有同名項目。";
 "app.archive.error.missingNestedArchive" = "找不到已更新的內層壓縮檔。";
 "app.archive.error.missingWindowsSFX" = "應用程式套件中缺少 Windows 自解壓縮檔 (SFX) 模組。";
@@ -27,6 +28,8 @@
 "app.archive.error.sfxUnsupportedMethod" = "所選壓縮方法不支援 Windows 自解壓縮檔 (SFX)。";
 "app.archive.error.zipPasswordRequiresEncryption" = "已提供密碼，但未選擇 Zip 加密方式。建立壓縮檔前，請指定要使用 AES-256 (建議) 或 ZipCrypto。";
 "app.archive.password.enterForArchive" = "輸入「%@」的密碼。";
+"app.archive.updateEncryption.none" = "無";
+"app.archive.updateEncryption.title" = "更新「%@」";
 
 "app.benchmark.cannotFindCodecs" = "找不到 7-Zip 編解碼器";
 "app.benchmark.decodingError" = "解碼錯誤";

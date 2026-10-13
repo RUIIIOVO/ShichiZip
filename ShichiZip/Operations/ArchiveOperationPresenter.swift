@@ -82,6 +82,12 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
             }
             return szRunChoiceDialog(request)
         }
+        session.updateEncryptionRequestHandler = { [weak self] archivePath, defaultEncryption in
+            MainActor.assumeIsolated {
+                self?.showProgressIfNeeded()
+                return ArchiveUpdateEncryptionDialog.runModal(forArchive: archivePath, defaultEncryption: defaultEncryption)
+            }
+        }
     }
 
     func start() {
@@ -257,6 +263,7 @@ final class ArchiveOperationPresenter: NSObject, NSWindowDelegate {
         session.snapshotHandler = nil
         session.passwordRequestHandler = nil
         session.choiceRequestHandler = nil
+        session.updateEncryptionRequestHandler = nil
         model.closeAction = nil
         requestedParentWindow = nil
         activeSheetParent = nil

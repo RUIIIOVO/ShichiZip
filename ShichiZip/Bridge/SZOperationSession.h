@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 
-@class SZArchiveUpdateIssue;
+#import "SZArchive.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -28,6 +28,9 @@ typedef BOOL (^SZOperationPasswordRequestHandler)(NSString* title,
     NSString* _Nullable message,
     NSString* _Nullable initialValue,
     NSString* _Nullable* _Nullable password);
+
+typedef SZArchiveUpdateEncryption* _Nullable (^SZOperationUpdateEncryptionRequestHandler)(NSString* archivePath,
+    SZEncryptionMethod defaultEncryption);
 
 @interface SZOperationChoiceRequest : NSObject
 
@@ -75,6 +78,8 @@ typedef void (^SZOperationSnapshotHandler)(SZOperationSnapshot* snapshot);
 
 @property (nonatomic, copy, nullable) SZOperationSnapshotHandler snapshotHandler;
 @property (nonatomic, copy, nullable) SZOperationPasswordRequestHandler passwordRequestHandler;
+/// Return nil to cancel the content update. Called on the main thread.
+@property (nonatomic, copy, nullable) SZOperationUpdateEncryptionRequestHandler updateEncryptionRequestHandler;
 @property (nonatomic, copy, nullable) SZOperationChoiceRequestHandler choiceRequestHandler;
 
 @property (nonatomic, readonly) SZOperationPhase phase;
@@ -109,6 +114,8 @@ typedef void (^SZOperationSnapshotHandler)(SZOperationSnapshot* snapshot);
                     initialValue:(nullable NSString*)initialValue
                         password:(NSString* _Nullable* _Nullable)password;
 - (NSInteger)requestChoice:(SZOperationChoiceRequest*)request;
+- (nullable SZArchiveUpdateEncryption*)requestUpdateEncryptionForArchive:(NSString*)archivePath
+                                                       defaultEncryption:(SZEncryptionMethod)defaultEncryption;
 
 @end
 

@@ -18,6 +18,7 @@
 "app.archive.error.invalidItemSelection" = "压缩包项目选择无效。";
 "app.archive.error.invalidOpenType" = "压缩包打开类型无效：%@";
 "app.archive.error.invalidSourcePath" = "源路径无效。";
+"app.archive.error.invalidUpdateEncryptionMethod" = "不支持此加密方式。";
 "app.archive.error.itemAlreadyExists" = "压缩包中已存在同名项目。";
 "app.archive.error.missingNestedArchive" = "更新后的嵌套压缩包文件缺失。";
 "app.archive.error.missingWindowsSFX" = "应用程序包中缺少 Windows 自解压模块。";
@@ -28,6 +29,8 @@
 "app.archive.error.zipPasswordRequiresEncryption" = "已提供密码，但未选择 zip 加密方法。请先明确选择 AES-256（推荐）或 ZipCrypto，再创建压缩包。";
 "app.archive.password.enterForArchive" = "请输入「%@」的密码。";
 "app.archive.password.enterForEntry" = "请输入「%1$@」中「%2$@」的密码。";
+"app.archive.updateEncryption.none" = "无";
+"app.archive.updateEncryption.title" = "更新「%@」";
 
 "app.benchmark.cannotFindCodecs" = "找不到 7-Zip 编解码器";
 "app.benchmark.decodingError" = "解码错误";

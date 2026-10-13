@@ -66,27 +66,30 @@ final class ZipPasswordMutationTests: XCTestCase {
         }
     }
 
-    private func verifyEncryptedPayloads(_ payloads: [String: String],
+    private func verifyEncryptedPayloads(_ members: [Member],
                                          at archiveURL: URL,
-                                         password: String,
                                          destination: URL) throws
     {
-        let reopened = SZArchive()
-        try reopened.open(atPath: archiveURL.path, session: SZOperationSession())
-        defer { reopened.close() }
-
-        let entries = reopened.entries()
-        XCTAssertEqual(Set(entries.map(\.path)), Set(payloads.keys))
-        XCTAssertTrue(entries.allSatisfy(\.isEncrypted), "Mutation must keep every data entry encrypted")
-        let settings = SZExtractionSettings()
-        settings.password = password
-        try reopened.extract(toPath: destination.path, settings: settings, session: SZOperationSession())
-        for (path, expected) in payloads {
-            XCTAssertEqual(try String(contentsOf: destination.appendingPathComponent(path), encoding: .utf8), expected)
+        for member in members {
+            let reopened = SZArchive()
+            try reopened.open(atPath: archiveURL.path, session: SZOperationSession())
+            defer { reopened.close() }
+            let entries = reopened.entries()
+            XCTAssertEqual(Set(entries.map(\.path)), Set(members.map(\.path)))
+            XCTAssertTrue(entries.allSatisfy(\.isEncrypted), "Mutation must keep every data entry encrypted")
+            let entry = try XCTUnwrap(entries.first { $0.path == member.path })
+            let expectedMethod = member.encryption == .AES256 ? "AES-256" : "ZipCrypto"
+            XCTAssertTrue(entry.method?.contains(expectedMethod) == true)
+            let settings = SZExtractionSettings()
+            settings.password = member.password
+            try reopened.extractEntries([NSNumber(value: entry.index)], toPath: destination.path,
+                                        settings: settings, session: SZOperationSession())
+            XCTAssertEqual(try String(contentsOf: destination.appendingPathComponent(member.path), encoding: .utf8),
+                           member.contents)
         }
     }
 
-    func testAddingAfterIntegrityTestUsesLearnedPassword() throws {
+    func testAddingAfterIntegrityTestUsesExplicitWriteChoiceInsteadOfLearnedPassword() throws {
         for encryption in [SZEncryptionMethod.AES256, .zipCrypto] {
             let (archive, root) = try makeArchive([
                 Member(path: "existing.txt", contents: "original", encryption: encryption, password: "one"),
@@ -99,16 +102,25 @@ final class ZipPasswordMutationTests: XCTestCase {
 
             let added = root.appendingPathComponent("added.txt")
             try "added payload".write(to: added, atomically: true, encoding: .utf8)
-            try archive.addPaths([added.path], toArchiveSubdir: "", moveMode: false, session: SZOperationSession())
+            let selectedEncryption: SZEncryptionMethod = encryption == .AES256 ? .zipCrypto : .AES256
+            var choices = 0
+            let session = SZOperationSession()
+            session.updateEncryptionRequestHandler = { _, defaultEncryption in
+                XCTAssertEqual(defaultEncryption, encryption)
+                choices += 1
+                return SZArchiveUpdateEncryption(encryption: selectedEncryption, password: "new-password")
+            }
+            try archive.addPaths([added.path], toArchiveSubdir: "", moveMode: false, session: session)
 
-            try verifyEncryptedPayloads(["existing.txt": "original", "added.txt": "added payload"],
-                                        at: root.appendingPathComponent("archive.zip"),
-                                        password: "one",
-                                        destination: root.appendingPathComponent("after-add"))
+            XCTAssertEqual(choices, 1)
+            try verifyEncryptedPayloads([
+                Member(path: "existing.txt", contents: "original", encryption: encryption, password: "one"),
+                Member(path: "added.txt", contents: "added payload", encryption: selectedEncryption, password: "new-password"),
+            ], at: root.appendingPathComponent("archive.zip"), destination: root.appendingPathComponent("after-add"))
         }
     }
 
-    func testReplacingAfterExtractionUsesLearnedPassword() throws {
+    func testReplacingAfterExtractionUsesExplicitWriteChoiceInsteadOfLearnedPassword() throws {
         for encryption in [SZEncryptionMethod.AES256, .zipCrypto] {
             let (archive, root) = try makeArchive([
                 Member(path: "existing.txt", contents: "original", encryption: encryption, password: "one"),
@@ -124,15 +136,23 @@ final class ZipPasswordMutationTests: XCTestCase {
             let replacement = root.appendingPathComponent("replacement.txt")
             try "replacement payload".write(to: replacement, atomically: true, encoding: .utf8)
             let reference = try XCTUnwrap(archive.entries().first { $0.path == "existing.txt" }?.reference)
+            let selectedEncryption: SZEncryptionMethod = encryption == .AES256 ? .zipCrypto : .AES256
+            var choices = 0
+            let session = SZOperationSession()
+            session.updateEncryptionRequestHandler = { _, defaultEncryption in
+                XCTAssertEqual(defaultEncryption, encryption)
+                choices += 1
+                return SZArchiveUpdateEncryption(encryption: selectedEncryption, password: "new-password")
+            }
             try archive.replaceItem(at: reference,
                                     inArchiveSubdir: "",
                                     withFileAtPath: replacement.path,
-                                    session: SZOperationSession())
+                                    session: session)
 
-            try verifyEncryptedPayloads(["existing.txt": "replacement payload"],
-                                        at: root.appendingPathComponent("archive.zip"),
-                                        password: "one",
-                                        destination: root.appendingPathComponent("after-replace"))
+            XCTAssertEqual(choices, 1)
+            try verifyEncryptedPayloads([
+                Member(path: "existing.txt", contents: "replacement payload", encryption: selectedEncryption, password: "new-password"),
+            ], at: root.appendingPathComponent("archive.zip"), destination: root.appendingPathComponent("after-replace"))
         }
     }
 

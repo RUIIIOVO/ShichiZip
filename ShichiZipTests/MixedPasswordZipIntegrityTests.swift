@@ -19,13 +19,6 @@ final class MixedPasswordZipIntegrityTests: XCTestCase {
         Member(path: "secret.txt", contents: "AES payload", encryption: .AES256, password: "two"),
     ]
 
-    private struct ZipRecord {
-        let path: String
-        let localNameRange: Range<Int>
-        let centralNameRange: Range<Int>
-        let packedDataRange: Range<Int>
-    }
-
     private func makeArchive(members: [Member]) throws -> (archiveURL: URL, root: URL) {
         let root = try makeTemporaryDirectory(named: "mixed-password-integrity")
         let archiveURL = root.appendingPathComponent("mixed.zip")
@@ -47,56 +40,10 @@ final class MixedPasswordZipIntegrityTests: XCTestCase {
         return (archiveURL, root)
     }
 
-    /// Reads the ordinary ZIP records emitted by these small fixtures. Editing
-    /// record fields avoids accidentally replacing bytes in encrypted payloads.
-    private func records(in data: Data) throws -> [ZipRecord] {
-        func integer(at offset: Int, width: Int) throws -> Int {
-            guard offset >= 0, offset + width <= data.count else {
-                throw CocoaError(.fileReadCorruptFile)
-            }
-            return (0 ..< width).reduce(0) { $0 | Int(data[offset + $1]) << (8 * $1) }
-        }
-
-        let end = try XCTUnwrap(data.range(of: Data([0x50, 0x4B, 0x05, 0x06]), options: .backwards)?.lowerBound)
-        let count = try integer(at: end + 10, width: 2)
-        var centralOffset = try integer(at: end + 16, width: 4)
-        var result: [ZipRecord] = []
-        for _ in 0 ..< count {
-            guard try integer(at: centralOffset, width: 4) == 0x0201_4B50 else {
-                throw CocoaError(.fileReadCorruptFile)
-            }
-            let nameLength = try integer(at: centralOffset + 28, width: 2)
-            let extraLength = try integer(at: centralOffset + 30, width: 2)
-            let commentLength = try integer(at: centralOffset + 32, width: 2)
-            let packedSize = try integer(at: centralOffset + 20, width: 4)
-            let localOffset = try integer(at: centralOffset + 42, width: 4)
-            guard try integer(at: localOffset, width: 4) == 0x0403_4B50 else {
-                throw CocoaError(.fileReadCorruptFile)
-            }
-            let localNameLength = try integer(at: localOffset + 26, width: 2)
-            let localExtraLength = try integer(at: localOffset + 28, width: 2)
-            let centralName = (centralOffset + 46) ..< (centralOffset + 46 + nameLength)
-            let localName = (localOffset + 30) ..< (localOffset + 30 + localNameLength)
-            let payloadOffset = localName.upperBound + localExtraLength
-            let payload = payloadOffset ..< (payloadOffset + packedSize)
-            guard centralName.upperBound <= data.count, localName.upperBound <= data.count,
-                  payload.upperBound <= data.count,
-                  data[centralName] == data[localName]
-            else {
-                throw CocoaError(.fileReadCorruptFile)
-            }
-            let path = try XCTUnwrap(String(data: data[centralName], encoding: .utf8))
-            result.append(ZipRecord(path: path, localNameRange: localName,
-                                    centralNameRange: centralName, packedDataRange: payload))
-            centralOffset = centralName.upperBound + extraLength + commentLength
-        }
-        return result
-    }
-
     func testDuplicatePathsKeepSeparatePasswordsAndRenamedOutputFiles() throws {
         let fixture = try makeArchive(members: members)
         var data = try Data(contentsOf: fixture.archiveURL)
-        let secret = try XCTUnwrap(try records(in: data).first { $0.path == "secret.txt" })
+        let secret = try XCTUnwrap(try zipFixtureRecords(in: data).first { $0.path == "secret.txt" })
         let duplicateName = Data("legacy.txt".utf8)
         XCTAssertEqual(secret.localNameRange.count, duplicateName.count)
         XCTAssertEqual(secret.centralNameRange.count, duplicateName.count)
@@ -154,7 +101,7 @@ final class MixedPasswordZipIntegrityTests: XCTestCase {
     func testCachedIntegrityTestReadsPayloadAndReportsCorruptionWithoutReprompting() throws {
         let fixture = try makeArchive(members: members)
         let data = try Data(contentsOf: fixture.archiveURL)
-        let secret = try XCTUnwrap(try records(in: data).first { $0.path == "secret.txt" })
+        let secret = try XCTUnwrap(try zipFixtureRecords(in: data).first { $0.path == "secret.txt" })
         XCTAssertGreaterThan(secret.packedDataRange.count, 10)
 
         let archive = SZArchive()

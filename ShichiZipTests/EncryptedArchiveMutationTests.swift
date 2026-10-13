@@ -214,10 +214,15 @@ final class EncryptedArchiveMutationTests: XCTestCase {
         let archive = try openEncrypted(archiveURL)
         defer { archive.close() }
 
+        let session = SZOperationSession()
+        session.updateEncryptionRequestHandler = { _, defaultEncryption in
+            XCTAssertEqual(defaultEncryption, .AES256)
+            return SZArchiveUpdateEncryption(encryption: .AES256, password: Self.password)
+        }
         try archive.addPaths([looseFile.path],
                              toArchiveSubdir: "",
                              moveMode: false,
-                             session: nil)
+                             session: session)
 
         let paths = entryPaths(in: archive)
         XCTAssertTrue(paths.contains("existing.txt"))

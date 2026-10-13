@@ -110,6 +110,16 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
         XCTAssertTrue(confirmButton.waitForExistence(timeout: 10),
                       "Archive transfer confirmation dialog should appear")
         confirmButton.click()
+        confirmUnencryptedZipUpdate()
+    }
+
+    private func confirmUnencryptedZipUpdate() {
+        let encryptionPopup = app.popUpButtons.matching(identifier: "archiveUpdateEncryption.encryption").firstMatch
+        XCTAssertTrue(encryptionPopup.waitForExistence(timeout: 10),
+                      "Updating a ZIP should request this operation's encryption")
+        XCTAssertEqual(encryptionPopup.value as? String, "None")
+        let dialog = app.dialogs.containing(.popUpButton, identifier: "archiveUpdateEncryption.encryption").firstMatch
+        dialog.buttons.matching(identifier: "modal.button.1").firstMatch.click()
     }
 
     // MARK: - Tests
@@ -418,16 +428,14 @@ final class DragFromArchiveUITests: ShichiZipUITestCase {
                       "Loose file should be visible in the left pane")
         addedCell.click(forDuration: 1.0, thenDragTo: rightTable)
 
-        let confirmButton = app.buttons.matching(identifier: "modal.button.1").firstMatch
-        XCTAssertTrue(confirmButton.waitForExistence(timeout: 10),
-                      "Archive transfer confirmation dialog should appear")
-        confirmButton.click()
+        confirmArchiveTransfer()
 
         let addedInNestedArchive = rightTable.cells.staticTexts[addedFileURL.lastPathComponent]
         XCTAssertTrue(addedInNestedArchive.waitForExistence(timeout: 15),
                       "Dragged file should appear in the nested archive before pane deactivation")
 
         toggleDualPane()
+        confirmUnencryptedZipUpdate()
 
         let rightTableGone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
                                                        object: rightTable)

@@ -18,6 +18,7 @@
 "app.archive.error.invalidItemSelection" = "Invalid archive item selection.";
 "app.archive.error.invalidOpenType" = "Invalid archive open type: %@";
 "app.archive.error.invalidSourcePath" = "Invalid source path.";
+"app.archive.error.invalidUpdateEncryptionMethod" = "Unsupported encryption method.";
 "app.archive.error.itemAlreadyExists" = "An item with the same name already exists in the archive.";
 "app.archive.error.missingNestedArchive" = "The updated nested archive file is missing.";
 "app.archive.error.missingWindowsSFX" = "The Windows SFX module is missing from the application bundle.";
@@ -28,6 +29,8 @@
 "app.archive.error.zipPasswordRequiresEncryption" = "A password was supplied but no zip encryption method was selected. Choose AES-256 (recommended) or ZipCrypto explicitly before creating the archive.";
 "app.archive.password.enterForArchive" = "Enter password for \"%@\".";
 "app.archive.password.enterForEntry" = "Enter the password for \"%2$@\" in \"%1$@\".";
+"app.archive.updateEncryption.none" = "None";
+"app.archive.updateEncryption.title" = "Update \"%@\"";
 
 "app.benchmark.cannotFindCodecs" = "Can't find 7-Zip codecs";
 "app.benchmark.decodingError" = "Decoding error";

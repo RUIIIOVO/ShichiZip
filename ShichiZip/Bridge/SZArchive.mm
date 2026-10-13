@@ -48,6 +48,54 @@ extern bool g_CaseSensitive;
 // ObjC model implementations
 // ============================================================
 
+@implementation SZArchiveUpdateEncryption
+
+- (instancetype)initWithEncryption:(SZEncryptionMethod)encryption
+                          password:(NSString*)password {
+    if ((self = [super init])) {
+        _encryption = encryption;
+        _password = encryption == SZEncryptionMethodNone ? nil : [password copy];
+    }
+    return self;
+}
+
+- (BOOL)validateWithError:(NSError**)error {
+    if (_encryption == SZEncryptionMethodNone) {
+        return YES;
+    }
+
+    NSString* errorKey = nil;
+    if (_encryption != SZEncryptionMethodAES256
+        && _encryption != SZEncryptionMethodZipCrypto) {
+        errorKey = @"app.archive.error.invalidUpdateEncryptionMethod";
+    } else if (_password.length == 0) {
+        errorKey = @"password.enterPassword";
+    } else {
+        // Match the ZIP handler's password character range before any writes.
+        for (NSUInteger i = 0; i < _password.length; i++) {
+            const unichar character = [_password characterAtIndex:i];
+            if (character < 0x20 || character > 0x7F) {
+                errorKey = @"password.useAscii";
+                break;
+            }
+        }
+        if (!errorKey && _encryption == SZEncryptionMethodAES256
+            && _password.length > 99) {
+            errorKey = @"password.tooLong";
+        }
+    }
+
+    if (errorKey) {
+        if (error) {
+            *error = SZMakeError(E_INVALIDARG, SZLocalizedString(errorKey));
+        }
+        return NO;
+    }
+    return YES;
+}
+
+@end
+
 @implementation SZCompressionSettings
 - (instancetype)init {
     if ((self = [super init])) {
@@ -1845,6 +1893,109 @@ static SZArchiveUpdateOutcome* SZFinalizeAgentUpdateResult(
         callback->Diagnostics, callback->ArchiveWasReplaced);
 }
 
+static BOOL SZConfigureZipContentUpdate(CAgent* agent,
+    NSString* archivePath,
+    SZAgentUpdateCallback* callback,
+    SZOperationSession* session,
+    NSError** error) {
+    IInArchive* archive = agent->_archiveLink.GetArchive();
+    UInt32 numItems = 0;
+    HRESULT result = archive->GetNumberOfItems(&numItems);
+    SZEncryptionMethod defaultEncryption = SZEncryptionMethodNone;
+    for (UInt32 index = 0; result == S_OK && index < numItems; index++) {
+        if ([session shouldCancel]) {
+            result = E_ABORT;
+            break;
+        }
+        NWindows::NCOM::CPropVariant isDirectory;
+        result = archive->GetProperty(index, kpidIsDir, &isDirectory);
+        if (result != S_OK) {
+            break;
+        }
+        if (isDirectory.vt != VT_BOOL) {
+            result = E_FAIL;
+            break;
+        }
+        if (isDirectory.boolVal != VARIANT_FALSE) {
+            continue;
+        }
+        NWindows::NCOM::CPropVariant encrypted;
+        result = archive->GetProperty(index, kpidEncrypted, &encrypted);
+        if (result != S_OK) {
+            break;
+        }
+        if (encrypted.vt != VT_BOOL) {
+            result = E_FAIL;
+            break;
+        }
+        if (encrypted.boolVal != VARIANT_FALSE) {
+            // The ZIP handler prefixes kpidMethod with the encryption name.
+            // Use the first encrypted file in archive order, even if its
+            // encryption is unknown and the default must remain None.
+            NSString* encryptionName = [ItemStr(archive, index, kpidMethod) componentsSeparatedByString:@" "].firstObject;
+            if ([encryptionName isEqualToString:@"ZipCrypto"]) {
+                defaultEncryption = SZEncryptionMethodZipCrypto;
+            } else if ([encryptionName isEqualToString:@"AES-128"]
+                || [encryptionName isEqualToString:@"AES-192"]
+                || [encryptionName isEqualToString:@"AES-256"]) {
+                defaultEncryption = SZEncryptionMethodAES256;
+            }
+            break;
+        }
+    }
+
+    CMyComPtr<ISetProperties> handlerProperties;
+    if (result == S_OK) {
+        archive->QueryInterface(IID_ISetProperties, (void**)&handlerProperties);
+        if (!handlerProperties) {
+            result = E_NOTIMPL;
+        }
+    }
+    if (result != S_OK) {
+        if (error) {
+            *error = SZArchiveUpdateErrorFromResult(result,
+                SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", archivePath), UString());
+        }
+        return NO;
+    }
+
+    SZArchiveUpdateEncryption* selection = [session requestUpdateEncryptionForArchive:archivePath
+                                                                    defaultEncryption:defaultEncryption];
+    if (!selection || [session shouldCancel]) {
+        if (error) {
+            *error = SZMakeError(SZArchiveErrorCodeUserCancelled,
+                SZLocalizedString(@"app.archive.error.operationCancelled"));
+        }
+        return NO;
+    }
+    if (![selection validateWithError:error]) {
+        return NO;
+    }
+
+    const wchar_t* propertyName = L"em";
+    NWindows::NCOM::CPropVariant propertyValue(
+        selection.encryption == SZEncryptionMethodAES256 ? L"AES256" : L"ZipCrypto");
+    // CopyFrom reapplies the agent properties; CopyFromFile uses the handler
+    // directly. Configure both so neither path infers a mode from old entries.
+    result = static_cast<ISetProperties*>(agent)->SetProperties(&propertyName, &propertyValue, 1);
+    if (result == S_OK) {
+        result = handlerProperties->SetProperties(&propertyName, &propertyValue, 1);
+    }
+    if (result != S_OK) {
+        if (error) {
+            *error = SZArchiveUpdateErrorFromResult(result,
+                SZLocalizedStringWithFirstPlaceholder(@"archive.cannotUpdateFile", archivePath), UString());
+        }
+        return NO;
+    }
+
+    // An undefined password controls plain output, including an explicit None
+    // choice. Read-password hints never participate in this write policy.
+    callback->PasswordIsDefined = selection.encryption != SZEncryptionMethodNone;
+    callback->Password = callback->PasswordIsDefined ? ToU(selection.password) : UString();
+    return YES;
+}
+
 @implementation SZArchive
 
 + (SZCompressionResourceInfo*)compressionResourceEstimateForSettings:
@@ -1933,7 +2084,11 @@ static SZArchiveUpdateOutcome* SZFinalizeAgentUpdateResult(
     if (result != S_OK && !callback->ArchiveWasReplaced) {
         return;
     }
-    if (callback->PasswordIsDefined) {
+    if ([self.formatName.lowercaseString isEqualToString:@"zip"]) {
+        // A ZIP update can mix untouched read passwords with the new write
+        // password. Reopening must resolve each entry's read password afresh.
+        [self clearCachedPassword];
+    } else if (callback->PasswordIsDefined) {
         [self storeCachedPassword:callback->Password defined:true];
     } else {
         [self clearCachedPassword];
@@ -1968,9 +2123,9 @@ static SZArchiveUpdateOutcome* SZFinalizeAgentUpdateResult(
 }
 
 - (void)updateCachedPasswordFromZipEntriesWithResult:(HRESULT)result
-                                           callback:(SZFolderExtractCallback*)callback {
-    // Preserve read-then-update behavior for ordinary ZIPs, but never choose
-    // one member's password as the write password of a known mixed archive.
+                                            callback:(SZFolderExtractCallback*)callback {
+    // Keep a single learned password as a read hint. ZIP content updates choose
+    // their write password independently of this cache.
     if (const UString* password = _zipPasswords.SinglePassword()) {
         [self storeCachedPassword:*password defined:true];
     } else if (_zipPasswords.HasMultiplePasswords() || result != S_OK || callback->NumErrors > 0) {
@@ -3124,7 +3279,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     // so every in-place add fails closed before publication.
     updateSpec->InputErrorPolicy = SZUpdateInputErrorPolicy::StopOnInputError;
     updateSpec->ArchivePath = ToU(_archivePath ?: @"");
-    if (_cachedPasswordIsDefined) {
+    const bool isZip = [self.formatName.lowercaseString isEqualToString:@"zip"];
+    if (!isZip && _cachedPasswordIsDefined) {
         updateSpec->PasswordIsDefined = true;
         updateSpec->Password = ToU(_cachedPassword ?: @"");
     }
@@ -3159,6 +3315,9 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
             *error = SZMakeError(E_INVALIDARG,
                 SZLocalizedString(@"archive.tooManyItems"));
         }
+        return nil;
+    }
+    if (isZip && !SZConfigureZipContentUpdate(agentSpec, _archivePath, updateSpec, resolvedSession, error)) {
         return nil;
     }
     result = folderOperations->CopyFrom(
@@ -3222,7 +3381,8 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
     updateSpec->Session = resolvedSession;
     updateSpec->InputErrorPolicy = SZUpdateInputErrorPolicy::StopOnInputError;
     updateSpec->ArchivePath = ToU(_archivePath ?: @"");
-    if (_cachedPasswordIsDefined) {
+    const bool isZip = [self.formatName.lowercaseString isEqualToString:@"zip"];
+    if (!isZip && _cachedPasswordIsDefined) {
         updateSpec->PasswordIsDefined = true;
         updateSpec->Password = ToU(_cachedPassword ?: @"");
     }
@@ -3264,6 +3424,9 @@ static HRESULT SZExtractAndFinalize(IInArchive* archive,
         return nil;
     }
 
+    if (isZip && !SZConfigureZipContentUpdate(agentSpec, _archivePath, updateSpec, resolvedSession, error)) {
+        return nil;
+    }
     result = folderOperations->CopyFromFile(
         indices[0], ToU(standardizedSourcePath).Ptr(), updateCallback);
 

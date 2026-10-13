@@ -60,8 +60,11 @@ public:
     SZZipPasswordTestCallback(SZFolderExtractCallback* ui,
         const UString& password, UInt64 completedBeforeEntry,
         UInt64 entrySize, UInt64& entryProgress)
-        : UI(ui), Password(password), CompletedBeforeEntry(completedBeforeEntry),
-          EntrySize(entrySize), EntryProgress(entryProgress) {}
+        : UI(ui)
+        , Password(password)
+        , CompletedBeforeEntry(completedBeforeEntry)
+        , EntrySize(entrySize)
+        , EntryProgress(entryProgress) { }
 
     Int32 Result = NOperationResult::kDataError;
     bool ResultWasReported = false;
@@ -128,12 +131,12 @@ static bool IsPasswordFailure(Int32 result) {
 
 static HRESULT ReportValidationFailure(SZFolderExtractCallback* ui,
     const UString& path, Int32 result, bool passwordWasValidated) {
-    if (passwordWasValidated && (result == NOperationResult::kCRCError
-        || result == NOperationResult::kDataError)) {
+    if (passwordWasValidated && (result == NOperationResult::kCRCError || result == NOperationResult::kDataError)) {
         // An entry-bound password is already proven. Preserve the integrity
         // error rather than letting the legacy callback label it wrong password.
         UString message = ToU(SZLocalizedString(result == NOperationResult::kCRCError
-            ? @"error.crcFailedGeneric" : @"error.dataErrorGeneric"));
+                ? @"error.crcFailedGeneric"
+                : @"error.dataErrorGeneric"));
         message += " : ";
         message += path;
         return static_cast<IFolderArchiveExtractCallback*>(ui)->MessageError(message);
@@ -142,12 +145,14 @@ static HRESULT ReportValidationFailure(SZFolderExtractCallback* ui,
 }
 
 class SZZipEntryExtractionCallback final : public IArchiveExtractCallback,
-                                          public ICryptoGetTextPassword,
-                                          public CMyUnknownImp {
+                                           public ICryptoGetTextPassword,
+                                           public CMyUnknownImp {
 public:
     SZZipEntryExtractionCallback(IArchiveExtractCallback* inner,
         const SZZipPasswordCache& passwords, const SZZipExtractionProgress& progress)
-        : Inner(inner), Passwords(passwords), Progress(progress) {}
+        : Inner(inner)
+        , Passwords(passwords)
+        , Progress(progress) { }
 
     STDMETHOD(QueryInterface)(REFGUID iid, void** object) override {
         *object = NULL;
@@ -260,7 +265,7 @@ HRESULT SZPrepareZipPasswords(IInArchive* archive,
     std::vector<UInt32>& verifiedEncryptedIndices,
     SZZipExtractionProgress& progress) {
     verifiedEncryptedIndices.clear();
-    progress = {};
+    progress = { };
     RINOK(CheckCancellation(ui))
     IFolderArchiveExtractCallback* extractionUI = ui;
     UInt32 itemCount;
@@ -304,7 +309,7 @@ HRESULT SZPrepareZipPasswords(IInArchive* archive,
     // A test reads each entry once. Extraction also includes the initial
     // validation pass for entries whose password is not yet known.
     progress.TotalBytes = forceValidation ? requestedBytes
-        : AddProgressBytes(requestedBytes, progress.PasswordValidationBytes);
+                                          : AddProgressBytes(requestedBytes, progress.PasswordValidationBytes);
     RINOK(extractionUI->SetTotal(progress.TotalBytes))
     UInt64 completedBeforeEntry = 0;
     for (const SZEncryptedZipEntry& entry : entries) {
@@ -334,14 +339,16 @@ HRESULT SZPrepareZipPasswords(IInArchive* archive,
                 }
                 NSString* password = nil;
                 NSString* message = [NSString stringWithFormat:
-                    SZLocalizedString(@"app.archive.password.enterForEntry"),
+                        SZLocalizedString(@"app.archive.password.enterForEntry"),
                     ToNS(ui->ArchivePath), ToNS(entry.Path)];
                 if (nextCandidate > 0) {
                     message = [NSString stringWithFormat:@"%@\n\n%@",
                         SZLocalizedString(@"error.wrongPasswordGeneric"), message];
                 }
                 if (![session requestPasswordWithTitle:SZLocalizedString(@"password.enterPassword")
-                        message:message initialValue:nil password:&password])
+                                               message:message
+                                          initialValue:nil
+                                              password:&password])
                     return E_ABORT;
                 // A repeated answer may be a user correcting their next input;
                 // prompt again without needlessly decoding with a failed secret.

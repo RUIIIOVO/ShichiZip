@@ -2,6 +2,12 @@
 
 #import "../Dialogs/SZDialogPresenter.h"
 
+#if SHICHIZIP_ZS_VARIANT
+#import "ShichiZip_ZS-Swift.h"
+#else
+#import "ShichiZip-Swift.h"
+#endif
+
 SZOperationSession* SZMakeDefaultOperationSession(void) {
     SZOperationSession* session = [SZOperationSession new];
     session.passwordRequestHandler = ^BOOL(NSString* title,
@@ -15,6 +21,9 @@ SZOperationSession* SZMakeDefaultOperationSession(void) {
     };
     session.choiceRequestHandler = ^NSInteger(SZOperationChoiceRequest* request) {
         return [SZDialogPresenter runChoiceRequest:request];
+    };
+    session.updateEncryptionRequestHandler = ^SZArchiveUpdateEncryption*(NSString* archivePath, SZEncryptionMethod defaultEncryption) {
+        return [SZArchiveUpdateEncryptionDialog runModalForArchive:archivePath defaultEncryption:defaultEncryption];
     };
     return session;
 }
