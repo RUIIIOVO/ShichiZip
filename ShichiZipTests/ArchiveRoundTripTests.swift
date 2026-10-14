@@ -216,6 +216,57 @@ final class ArchiveRoundTripTests: XCTestCase {
         }
     }
 
+    func testExcludeOfficeLockFilesSkipsOnlyLockFiles() throws {
+        let tempRoot = try makeTemporaryDirectory(named: "roundtrip-exclude-office-lock-files")
+        let sourceRoot = tempRoot.appendingPathComponent("docs", isDirectory: true)
+        _ = try writePayloads([
+            "docs/report.docx": "report",
+            "docs/~$report.docx": "ms-office-lock",
+            "docs/.~report.docx": "wps-lock",
+            "docs/.~lock.report.docx#": "libreoffice-lock",
+            "docs/nested/~$sheet.xlsx": "nested-lock",
+            "docs/nested/sheet.xlsx": "sheet",
+            "docs/notes~$draft.txt": "not-a-lock",
+            "docs/.~folder/kept.txt": "kept",
+        ], into: tempRoot)
+
+        func archivedPaths(excludeOfficeLockFiles: Bool) throws -> Set<String> {
+            let archiveURL = tempRoot.appendingPathComponent("out-\(excludeOfficeLockFiles).zip")
+            let settings = SZCompressionSettings()
+            settings.format = .formatZip
+            settings.method = .deflate
+            settings.methodName = "Deflate"
+            settings.pathMode = .relativePaths
+            settings.excludeOfficeLockFiles = excludeOfficeLockFiles
+
+            try SZArchive.create(atPath: archiveURL.path,
+                                 fromPaths: [sourceRoot.path],
+                                 settings: settings,
+                                 session: nil)
+
+            let archive = SZArchive()
+            try archive.open(atPath: archiveURL.path, session: nil)
+            defer { archive.close() }
+            return Set(archive.entries().filter { !$0.isDirectory }.map(\.path))
+        }
+
+        let lockFiles: Set = [
+            "docs/~$report.docx",
+            "docs/.~report.docx",
+            "docs/.~lock.report.docx#",
+            "docs/nested/~$sheet.xlsx",
+        ]
+        let keptFiles: Set = [
+            "docs/report.docx",
+            "docs/nested/sheet.xlsx",
+            "docs/notes~$draft.txt",
+            "docs/.~folder/kept.txt",
+        ]
+
+        XCTAssertEqual(try archivedPaths(excludeOfficeLockFiles: false), lockFiles.union(keptFiles))
+        XCTAssertEqual(try archivedPaths(excludeOfficeLockFiles: true), keptFiles)
+    }
+
     func testCreatingArchiveFromAbsoluteSourcesPreservesCommonParentRelativePaths() throws {
         let tempRoot = try makeTemporaryDirectory(named: "roundtrip-create-common-parent")
         let sourceURLs = try writePayloads([

@@ -40,6 +40,8 @@
 "app.benchmark.usableLimit" = "Usable limit: %@ MB";
 
 "app.compress.excludeMacResources" = "Exclude macOS resource files";
+"app.compress.excludeOfficeLockFiles" = "Exclude document temp files";
+"app.compress.excludeOfficeLockFilesHelp" = "Lock files that Word, WPS and similar apps create next to open documents (~$*, .~*)";
 "app.compress.order" = "Order:";
 
 "app.deleteTempFiles.deleteContents" = "Delete \"%@\" and all of its contents?";
@@ -191,6 +193,7 @@
 "app.settings.defaultOpenersNote" = "Already-default types are shown as Current Default. To switch a type back to another app later, use Finder's Open With controls or another app's integration settings.";
 "app.settings.display" = "Display";
 "app.settings.excludeMacResourceForks" = "Exclude macOS resource fork files by default";
+"app.settings.excludeOfficeLockFiles" = "Exclude document temp files by default";
 "app.settings.extensions" = "Extensions";
 "app.settings.extraction" = "Extraction";
 "app.settings.fileType" = "File Type";

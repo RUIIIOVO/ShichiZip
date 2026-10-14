@@ -21,6 +21,7 @@ extension CompressDialogController {
         var encryptNames: Bool
         var createSFX: Bool
         var excludeMacResourceFiles: Bool
+        var excludeOfficeLockFiles: Bool
         var memoryUsageSpec: String
         var openSharedFiles: Bool
         var deleteAfterCompression: Bool
@@ -83,6 +84,7 @@ extension CompressDialogController {
             settings.encryptFileNames = normalizedPassword != nil && state.format.supportsEncryptFileNames && state.encryptNames
             settings.createSFX = effectiveCreateSFX
             settings.excludeMacResourceFiles = state.excludeMacResourceFiles
+            settings.excludeOfficeLockFiles = state.excludeOfficeLockFiles
             settings.solidMode = state.format.supportsSolid && state.solidMode
             settings.dictionarySize = state.dictionarySize
             settings.wordSize = state.wordSize

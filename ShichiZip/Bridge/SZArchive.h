@@ -203,6 +203,7 @@ typedef NS_ENUM(NSInteger, SZCompressionTimePrecision) {
 @property (nonatomic) BOOL openSharedFiles;
 @property (nonatomic) BOOL deleteAfterCompression;
 @property (nonatomic) BOOL excludeMacResourceFiles;
+@property (nonatomic) BOOL excludeOfficeLockFiles;
 @property (nonatomic) SZCompressionBoolSetting storeSymbolicLinks;
 @property (nonatomic) SZCompressionBoolSetting storeHardLinks;
 @property (nonatomic) SZCompressionBoolSetting storeAlternateDataStreams;

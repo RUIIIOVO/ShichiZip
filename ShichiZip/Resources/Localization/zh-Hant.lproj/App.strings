@@ -39,6 +39,8 @@
 "app.benchmark.usableLimit" = "可用限制：%@ MB";
 
 "app.compress.excludeMacResources" = "排除 macOS 資源檔";
+"app.compress.excludeOfficeLockFiles" = "排除文件暫存檔";
+"app.compress.excludeOfficeLockFilesHelp" = "Word、WPS 等開啟文件時產生的 ~$*、.~* 檔案";
 "app.compress.order" = "順序：";
 
 "app.deleteTempFiles.deleteContents" = "要刪除「%@」及其所有內容嗎？";
@@ -190,6 +192,7 @@
 "app.settings.defaultOpenersNote" = "已是預設的類型會顯示為目前預設。若稍後要將某種類型切回其他 App，請使用 Finder 的「打開檔案的應用程式」控制項，或其他 App 的整合設定。";
 "app.settings.display" = "顯示";
 "app.settings.excludeMacResourceForks" = "預設排除 macOS 資源分支檔案";
+"app.settings.excludeOfficeLockFiles" = "預設排除文件暫存檔";
 "app.settings.extensions" = "延伸功能";
 "app.settings.extraction" = "解壓縮";
 "app.settings.fileType" = "檔案類型";

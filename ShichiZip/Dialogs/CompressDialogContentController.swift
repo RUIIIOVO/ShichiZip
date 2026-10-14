@@ -180,6 +180,13 @@ extension CompressDialogController {
             excludeMacResourceFilesCheckbox.state = initialState.excludeMacResourceFiles ? .on : .off
             excludeMacResourceFilesCheckbox.setAccessibilityIdentifier("compress.excludeMacResources")
 
+            let excludeOfficeLockFilesCheckbox = NSButton(checkboxWithTitle: SZL10n.string("app.compress.excludeOfficeLockFiles"),
+                                                          target: nil,
+                                                          action: nil)
+            excludeOfficeLockFilesCheckbox.state = initialState.excludeOfficeLockFiles ? .on : .off
+            excludeOfficeLockFilesCheckbox.toolTip = SZL10n.string("app.compress.excludeOfficeLockFilesHelp")
+            excludeOfficeLockFilesCheckbox.setAccessibilityIdentifier("compress.excludeOfficeLockFiles")
+
             let advancedOptionsButton = NSButton(title: SZL10n.string("compress.options"),
                                                  target: owner,
                                                  action: #selector(CompressDialogController.showAdvancedOptions(_:)))
@@ -271,6 +278,7 @@ extension CompressDialogController {
             let optionsColumn = CompressDialogLayout.makeTitledSection(title: SZL10n.string("compress.options"), rows: [
                 createSFXCheckbox,
                 excludeMacResourceFilesCheckbox,
+                excludeOfficeLockFilesCheckbox,
                 openSharedCheckbox,
                 deleteAfterCheckbox,
                 advancedOptionsRow,
@@ -329,6 +337,7 @@ extension CompressDialogController {
                                               encryptNamesCheckbox: encryptNamesCheckbox,
                                               createSFXCheckbox: createSFXCheckbox,
                                               excludeMacResourceFilesCheckbox: excludeMacResourceFilesCheckbox,
+                                              excludeOfficeLockFilesCheckbox: excludeOfficeLockFilesCheckbox,
                                               openSharedCheckbox: openSharedCheckbox,
                                               deleteAfterCheckbox: deleteAfterCheckbox,
                                               dictionaryLabel: dictionaryLabel,
@@ -367,6 +376,7 @@ extension CompressDialogController {
                                         encryptNames: controls.encryptNamesCheckbox.state == .on,
                                         createSFX: controls.createSFXCheckbox.state == .on,
                                         excludeMacResourceFiles: controls.excludeMacResourceFilesCheckbox.state == .on,
+                                        excludeOfficeLockFiles: controls.excludeOfficeLockFilesCheckbox.state == .on,
                                         memoryUsageSpec: selectedMemoryUsageSpecValue(),
                                         openSharedFiles: controls.openSharedCheckbox.state == .on,
                                         deleteAfterCompression: controls.deleteAfterCheckbox.state == .on,
