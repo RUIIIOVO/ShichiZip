@@ -45,7 +45,7 @@ final class MenuRefreshUITests: ShichiZipUITestCase {
         let titleExpectation = XCTNSPredicateExpectation(predicate: titlePredicate, object: settingsWindow)
         wait(for: [titleExpectation], timeout: 5)
 
-        let generalNavigation = app.buttons.matching(
+        let generalNavigation = app.descendants(matching: .any).matching(
             identifier: "settings.navigation.general",
         ).firstMatch
         let navigationPredicate = NSPredicate(format: "label == %@", "通用")

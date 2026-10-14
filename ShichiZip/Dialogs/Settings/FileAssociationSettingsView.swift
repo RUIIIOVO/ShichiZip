@@ -45,7 +45,7 @@ struct FileAssociationSettingsView: View {
 
                 SettingsNote(SZL10n.string("app.settings.defaultOpenersNote"))
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         }
         .onAppear {
             model.refresh()
@@ -106,6 +106,7 @@ struct FileAssociationSettingsView: View {
                 }
             }
         }
+        .frame(minHeight: 0, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor)),

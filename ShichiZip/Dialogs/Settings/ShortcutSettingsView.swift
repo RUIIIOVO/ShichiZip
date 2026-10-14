@@ -6,14 +6,21 @@ struct ShortcutSettingsView: View {
     var body: some View {
         SettingsPageView {
             SettingsSectionView(SZL10n.string("app.settings.currentShortcuts")) {
-                Picker(SZL10n.string("app.settings.preset"), selection: presetBinding) {
-                    ForEach(FileManagerShortcutPreset.allCases, id: \.rawValue) { preset in
-                        Text(preset.displayName)
-                            .tag(preset)
+                HStack(spacing: 12) {
+                    Text(SZL10n.string("app.settings.preset"))
+                        .fixedSize()
+
+                    Picker(SZL10n.string("app.settings.preset"), selection: presetBinding) {
+                        ForEach(FileManagerShortcutPreset.allCases, id: \.rawValue) { preset in
+                            Text(preset.displayName)
+                                .tag(preset)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("settings.shortcutPreset")
                 }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("settings.shortcutPreset")
 
                 Divider()
 

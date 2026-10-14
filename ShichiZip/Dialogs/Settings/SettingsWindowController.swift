@@ -17,12 +17,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             fileAssociations: fileAssociations,
         )
         let hostingController = NSHostingController(rootView: rootView)
+        // Enforce the root view's minimum size without adopting each page's ideal size.
+        hostingController.sizingOptions = [.minSize]
         let window = NSWindow(contentViewController: hostingController)
 
         window.title = SZL10n.string("settings.options")
-        window.styleMask = [.titled, .closable, .resizable]
-        window.setContentSize(NSSize(width: 650, height: 500))
-        window.minSize = NSSize(width: 620, height: 440)
+        window.styleMask = [.titled, .closable, .resizable, .fullSizeContentView]
+        window.toolbarStyle = .unified
+        window.setContentSize(NSSize(width: 700, height: 500))
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
         window.center()

@@ -8,8 +8,8 @@ enum SettingsDestination: String, CaseIterable, Identifiable {
     case fileTypes
     case extensions
 
-    var id: String {
-        rawValue
+    var id: Self {
+        self
     }
 
     var title: String {
@@ -47,27 +47,34 @@ enum SettingsDestination: String, CaseIterable, Identifiable {
 struct SettingsRootView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var fileAssociations: FileAssociationSettingsModel
-    @State private var selection = SettingsDestination.general
+    @State private var selection: SettingsDestination? = .general
+    @FocusState private var sidebarHasFocus: Bool
 
     var body: some View {
-        HStack(spacing: 0) {
-            SettingsNavigationView(
-                selection: $selection,
-                localizationVersion: store.localizationVersion,
-            )
-            .frame(minWidth: 140)
-            .fixedSize(horizontal: true, vertical: false)
-
-            Divider()
-
+        NavigationSplitView {
+            List(selection: $selection) {
+                ForEach(SettingsDestination.allCases) { destination in
+                    NavigationLink(value: destination) {
+                        Label(destination.title, systemImage: destination.systemImage)
+                    }
+                    .accessibilityIdentifier("settings.navigation.\(destination.rawValue)")
+                }
+            }
+            .listStyle(.sidebar)
+            .focused($sidebarHasFocus)
+            .id(store.localizationVersion)
+            .navigationSplitViewColumnWidth(min: 140, ideal: 180, max: 240)
+        } detail: {
             selectedPage
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 480, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         }
-        .frame(minWidth: 620, minHeight: 440)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .navigationSplitViewStyle(.balanced)
+        .navigationTitle(SZL10n.string("settings.options"))
+        .defaultFocus($sidebarHasFocus, true)
+        .frame(minWidth: 660, maxWidth: .infinity, minHeight: 440, maxHeight: .infinity)
         .background(
             SettingsWindowBehaviorBridge(
-                updateToken: "\(selection.rawValue):\(store.localizationVersion)",
+                updateToken: "\(selection?.rawValue ?? ""):\(store.localizationVersion)",
             ),
         )
     }
@@ -75,7 +82,7 @@ struct SettingsRootView: View {
     @ViewBuilder
     private var selectedPage: some View {
         switch selection {
-        case .general:
+        case .general, nil:
             GeneralSettingsView(store: store)
         case .archives:
             ArchiveSettingsView(store: store)
@@ -85,135 +92,6 @@ struct SettingsRootView: View {
             FileAssociationSettingsView(model: fileAssociations)
         case .extensions:
             ExtensionSettingsView(store: store)
-        }
-    }
-}
-
-private struct SettingsNavigationView: View {
-    private static let rowHeight: CGFloat = 30
-    private static let rowSpacing: CGFloat = 3
-    private static let minimumContentWidth: CGFloat = 120
-
-    @Binding var selection: SettingsDestination
-    let localizationVersion: Int
-    @FocusState private var hasKeyboardFocus: Bool
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Button {} label: {
-                Color.clear
-                    .frame(minWidth: Self.minimumContentWidth, maxWidth: .infinity)
-                    .frame(height: Self.rowHeight)
-            }
-            .buttonStyle(.plain)
-            .offset(y: selectedRowOffset)
-            .focused($hasKeyboardFocus)
-            .modifier(SettingsNavigationFocusEffectModifier())
-            .onMoveCommand(perform: moveSelection)
-            .accessibilityHidden(true)
-
-            VStack(spacing: Self.rowSpacing) {
-                ForEach(SettingsDestination.allCases) { destination in
-                    Button {
-                        selection = destination
-                        hasKeyboardFocus = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: destination.systemImage)
-                                .frame(width: 16)
-                                .accessibilityHidden(true)
-                            Text(destination.title)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.horizontal, 9)
-                        .frame(height: Self.rowHeight)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(
-                        SettingsNavigationButtonStyle(
-                            isSelected: selection == destination,
-                            isKeyboardFocused: hasKeyboardFocus && selection == destination,
-                        ),
-                    )
-                    .focusable(false)
-                    .accessibilityAddTraits(selection == destination ? .isSelected : [])
-                    .accessibilityIdentifier("settings.navigation.\(destination.rawValue)")
-                }
-
-                Spacer(minLength: 0)
-            }
-        }
-        .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .id(localizationVersion)
-    }
-
-    private var selectedRowOffset: CGFloat {
-        let index = SettingsDestination.allCases.firstIndex(of: selection) ?? 0
-        return CGFloat(index) * (Self.rowHeight + Self.rowSpacing)
-    }
-
-    private func moveSelection(_ direction: MoveCommandDirection) {
-        guard let currentIndex = SettingsDestination.allCases.firstIndex(of: selection) else {
-            return
-        }
-
-        let nextIndex: Int
-        switch direction {
-        case .up:
-            nextIndex = max(SettingsDestination.allCases.startIndex, currentIndex - 1)
-        case .down:
-            nextIndex = min(SettingsDestination.allCases.index(before: SettingsDestination.allCases.endIndex),
-                            currentIndex + 1)
-        default:
-            return
-        }
-        let nextDestination = SettingsDestination.allCases[nextIndex]
-        selection = nextDestination
-    }
-}
-
-private struct SettingsNavigationButtonStyle: ButtonStyle {
-    @Environment(\.controlActiveState) private var controlActiveState
-
-    let isSelected: Bool
-    let isKeyboardFocused: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        let keyboardNavigationEnabled = NSApplication.shared.isFullKeyboardAccessEnabled
-        let usesEmphasizedSelection = controlActiveState == .key
-            && (!keyboardNavigationEnabled || isKeyboardFocused || configuration.isPressed)
-
-        configuration.label
-            .foregroundStyle(foregroundColor(emphasized: usesEmphasizedSelection))
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(backgroundColor(emphasized: usesEmphasizedSelection)),
-            )
-    }
-
-    private func foregroundColor(emphasized: Bool) -> Color {
-        guard isSelected else {
-            return .primary
-        }
-        return Color(nsColor: emphasized ? .alternateSelectedControlTextColor : .unemphasizedSelectedTextColor)
-    }
-
-    private func backgroundColor(emphasized: Bool) -> Color {
-        guard isSelected else {
-            return .clear
-        }
-        return Color(nsColor: emphasized ? .selectedContentBackgroundColor : .unemphasizedSelectedContentBackgroundColor)
-    }
-}
-
-private struct SettingsNavigationFocusEffectModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(macOS 14.0, *) {
-            content.focusEffectDisabled(true)
-        } else {
-            content
         }
     }
 }
